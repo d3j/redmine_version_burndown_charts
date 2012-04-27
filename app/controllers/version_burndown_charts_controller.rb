@@ -2,31 +2,31 @@ class VersionBurndownChartsController < ApplicationController
   unloadable
   menu_item :version_burndown_charts
   before_filter :find_project, :find_versions, :find_version_issues, :find_burndown_dates, :find_version_info, :find_issues_closed_status
-  
+
   def index
     relative_url_path =
       ActionController::Base.respond_to?(:relative_url_root) ? ActionController::Base.relative_url_root : ActionController::AbstractRequest.relative_url_root
 
     @graph =
       open_flash_chart_object( 880, 450,
-        url_for( :action => 'get_graph_data', :project_id => @project.id, :version_id => @version.id ),
-          true, "plugin_assets/open_flash_chart/" )
+                               url_for( :action => 'get_graph_data', :project_id => @project.id, :version_id => @version.id ),
+                               true, "plugin_assets/open_flash_chart/" )
   end
 
   def get_graph_data
-    
+
     estimated_data_array = []
     performance_data_array = []
     perfect_data_array = []
     upper_data_array = []
     lower_data_array = []
     x_labels_data = []
-    
+
     index_date = @start_date - 1
     index_estimated_hours = @estimated_hours
     index_performance_hours = @estimated_hours
     count = 1
-    
+
     while index_date <= (@version.due_date + 1)
       logger.debug("index_date #{index_date}")
 
@@ -40,11 +40,11 @@ class VersionBurndownChartsController < ApplicationController
       elsif index_date == @start_date || index_date == @version.due_date
         x_labels_data << index_date.strftime("%m/%d")
       elsif @sprint_range > 20 && count % (@sprint_range / 3).round != 0
-         x_labels_data << ""
+        x_labels_data << ""
       else
         x_labels_data << index_date.strftime("%m/%d")
       end
-      
+
       estimated_data_array << round(index_estimated_hours -= calc_estimated_hours_by_date(index_date))
       index_performance_hours = calc_performance_hours_by_date(index_date)
       performance_data_array << round(@estimated_hours - index_performance_hours)
@@ -54,7 +54,7 @@ class VersionBurndownChartsController < ApplicationController
 
       logger.debug("#{index_date} index_estimated_hours #{round(index_estimated_hours)}")
       logger.debug("#{index_date} index_performance_hours #{round(index_performance_hours)}")
-      
+
       index_date += 1
       count += 1
     end
@@ -198,7 +198,7 @@ class VersionBurndownChartsController < ApplicationController
       flash[:error] = l(:version_burndown_charts_project_nod_found, :project_id => params[:project_id])
       render_404
       return
-    end 
+    end
   end
 
   def find_versions
@@ -230,10 +230,10 @@ class VersionBurndownChartsController < ApplicationController
 
   def find_version_issues
     @version_issues = Issue.find_by_sql([
-          "select * from issues
+                                         "select * from issues
              where fixed_version_id = :version_id and start_date is not NULL and
                estimated_hours is not NULL order by start_date asc",
-                 {:version_id => @version.id}])
+                                         {:version_id => @version.id}])
     if @version_issues.empty?
       flash[:error] = l(:version_burndown_charts_issues_not_found, :version_name => @version.name)
       render :action => "index" and return false
