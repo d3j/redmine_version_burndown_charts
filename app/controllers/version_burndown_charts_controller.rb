@@ -243,7 +243,7 @@ class VersionBurndownChartsController < ApplicationController
   def find_burndown_dates
     previous = Version.first(:conditions => ["project_id = ? and effective_date < ?", @project, @version.due_date], :order => "effective_date desc")
     @start_date = previous.effective_date.tomorrow rescue @version_issues[0].start_date
-    if @version.due_date <= @start_date
+    if @version.due_date < @start_date
       flash[:error] = l(:version_burndown_charts_version_start_date_invalid, :version_name => @version.name)
       render :action => "index" and return false
     end
