@@ -10,7 +10,7 @@ class VersionBurndownChartsController < ApplicationController
     @graph =
       open_flash_chart_object( 880, 450,
                                url_for( :action => 'get_graph_data', :project_id => @project.id, :version_id => @version.id ),
-                               true, "plugin_assets/open_flash_chart/" )
+                               true, "/plugin_assets/open_flash_chart/" )
   end
 
   def get_graph_data
