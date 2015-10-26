@@ -3,14 +3,16 @@ class VersionBurndownChartsController < ApplicationController
   menu_item :version_burndown_charts
   before_filter :find_project, :find_versions, :find_version_issues, :find_burndown_dates, :find_version_info, :find_issues_closed_status
 
-  def index
-    relative_url_path =
-      ActionController::Base.respond_to?(:relative_url_root) ? ActionController::Base.relative_url_root : ActionController::AbstractRequest.relative_url_root
+#  logger.level = Logger::DEBUG
 
-    @graph =
-      open_flash_chart_object( 880, 450,
-                               url_for( :action => 'get_graph_data', :project_id => @project.id, :version_id => @version.id ),
-                               true, "/plugin_assets/open_flash_chart/" )
+  def index
+
+    relative_url_path = ActionController::Base.respond_to?(:relative_url_root) ? ActionController::Base.relative_url_root : ActionController::AbstractRequest.relative_url_root
+
+    @graph = open_flash_chart_object( 880, 450,
+      url_for( :action => 'get_graph_data', :project_id => @project.id, :version_id => @version.id ),
+      true, "/redmine/plugin_assets/open_flash_chart/" )
+
   end
 
   def get_graph_data
@@ -58,7 +60,6 @@ class VersionBurndownChartsController < ApplicationController
       index_date += 1
       count += 1
     end
-
     perfect_data_array.fill {|i| round(@estimated_hours - (@estimated_hours / @sprint_range * i)) }
     upper_data_array.fill {|i| round((@estimated_hours - (@estimated_hours / @sprint_range * i)) * 1.2) }
     lower_data_array.fill {|i| round((@estimated_hours - (@estimated_hours / @sprint_range * i)) * 0.8) }
@@ -120,6 +121,7 @@ class VersionBurndownChartsController < ApplicationController
   def calc_estimated_hours_by_date(target_date)
     target_issues = @version_issues.select { |issue| issue.due_date == target_date}
     target_hours = 0
+
     target_issues.each do |issue|
       next unless is_leaf(issue)
       target_hours += round(issue.estimated_hours)
@@ -149,6 +151,7 @@ class VersionBurndownChartsController < ApplicationController
 
     journal_details.each do |journal_detail|
       logger.debug("journal_detail id #{journal_detail.id}")
+
       @closed_statuses.each do |closed_status|
         logger.debug("closed_status id #{closed_status.id}")
         if journal_detail.value.to_i == closed_status.id
@@ -241,14 +244,14 @@ class VersionBurndownChartsController < ApplicationController
   end
 
   def find_burndown_dates
-    previous = Version.first(:conditions => ["project_id = ? and effective_date < ?", @project, @version.due_date], :order => "effective_date desc")
+    previous = Version.where(["project_id = ? and effective_date < ?", @project, @version.due_date]).order("effective_date desc").first
     @start_date = previous.effective_date.tomorrow rescue @version_issues[0].start_date
     if @version.due_date < @start_date
       flash[:error] = l(:version_burndown_charts_version_start_date_invalid, :version_name => @version.name)
       render :action => "index" and return false
     end
 
-    @sprint_range = @version.due_date - @start_date + 1
+    @sprint_range = (@version.due_date - @start_date + 1).to_i
 
     logger.debug("@start_date #{@start_date}")
     logger.debug("@version.due_date #{@version.due_date}")
@@ -256,8 +259,9 @@ class VersionBurndownChartsController < ApplicationController
   end
 
   def find_version_info
-    @closed_pourcent = (@version.closed_pourcent * 100).round / 100
-    @open_pourcent = 100 - @closed_pourcent
+    logger.debug("@version.closed_percent #{@version.closed_percent}")
+    @closed_percent = (@version.closed_percent * 100).round / 100
+    @open_percent = 100 - @closed_percent
     unless @version.estimated_hours
       flash[:error] = l(:version_burndown_charts_issues_start_date_or_estimated_date_not_found, :version_name => @version.name)
       render :action => "index" and return false
@@ -267,7 +271,8 @@ class VersionBurndownChartsController < ApplicationController
   end
 
   def find_issues_closed_status
-    @closed_statuses = IssueStatus.find_all_by_is_closed(true)
+#    @closed_statuses = IssueStatus.find_all_by_is_closed(true)
+    @closed_statuses = Issue.where("fixed_version_id = #{@version.id} AND done_ratio = 100")
     logger.debug("@closed_statuses #{@closed_statuses}")
   end
 end
